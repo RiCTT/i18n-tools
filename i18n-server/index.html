@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国际化</title>
+  <style>
+    .operate-menu .menu {
+      display: inline-block;
+      padding: 8px 10px;
+      margin-right: 10px;
+      cursor: pointer;
+      border: 1px solid #f2f2f2;
+      border-radius: 4px;
+      font-size: 12px;
+      user-select: none;
+    }
+    .operate-menu .menu:active {
+      border: 1px solid skyblue;
+    }
+
+    .translate-list {
+      font-size: 13px;
+      list-style-type: none;
+    }
+    .translate-list li {
+      margin-bottom: 10px;
+    }
+    .translate-list .zh {
+      display: inline-block;
+      width: 100px;
+      margin-right: 8px;
+    }
+
+    #info {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <!-- 操作菜单 -->
+  <div class="operate-menu">
+    <p class="menu" id="match">提取翻译列表</p>
+    <p class="menu" id="translate">执行翻译</p>
+    <p class="menu" id="replace">全局替换</p>
+    <p class="menu">
+      <label for="one">
+        <input id="one" type="radio" value="1" name="translate-type" checked />脚本翻译
+      </label>
+      <label for="two">
+        <input id="two" type="radio" value="2" name="translate-type" />付费翻译
+      </label>
+    </p>
+    <label for="">
+      <span>翻译文件名称：</span>
+      <input id="fileName" type="text" value="v2_auto" placeholder="默认为【v2_auto】">
+    </label>
+  </div>
+  <span id="info"></span>
+  <span style="font-size: 12px">【如果要手动替换翻译结果的，请注意输入英文，中文可能会有所差异（后台会根据时间戳生成key）】</span>
+  <!-- 翻译列表 -->
+  <ul id="translate-wrapper" class="translate-list">
+    <li class="translate-item">
+      <span class="zh">中文</span>
+      <span class="en">
+        <input type="text">
+      </span>
+    </li>
+  </ul>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    const $api = (function() {
+      return {
+        test() {
+          return axios.get('/test')
+        },
+        getMatchList() {
+          return axios.get('/match-list')
+        },
+        getTranslateList(params) {
+          let { list, type } = params
+          return axios.get('/translate-list', {
+            params: {
+              queryList: list,
+              type
+            }
+          })
+        },
+        goTranslate(body) {
+          return axios.post('/translate', body)
+        }
+      }
+    })()
+  </script>
+  <script>
+    let matchBtn = document.getElementById('match')
+    let translateBtn = document.getElementById('translate')
+    let replaceBtn = document.getElementById('replace')
+    let info = document.getElementById('info')
+    let radioList = [...document.getElementsByName('translate-type')]
+    let matchMap = {}
+    let translateType = 1
+    function listenRadio() {
+      radioList.forEach(e => {
+        e.addEventListener('change', (v) => {
+          translateType = Number(v.target.value)
+        })
+      })
+    }
+    listenRadio()
+
+    function initRelationData() {
+      matchMap = {}
+      document.getElementById('translate-wrapper').innerHTML = ''
+      document.getElementById('fileName').value = ''
+    }
+
+    function handleError(e) {
+      console.error(e)
+    }
+
+    matchBtn.addEventListener('click', (e) => {
+      $api.getMatchList()
+        .then(res => {
+          let html = ''
+          let wrapper = document.getElementById('translate-wrapper')
+          matchMap = res.data.texts
+          Object.keys(matchMap).forEach(key => {
+            html += `
+              <li class="translate-item">
+                <span class="zh">${matchMap[key].zh}</span>
+                <span class="en">
+                  <input type="text" value=${matchMap[key].en}>
+                </span>
+              </li>
+            `
+          })
+          wrapper.innerHTML = html
+          if (!html) {
+            info.innerText = '翻译项为空~请检查文件'
+          }
+        })
+        .catch(e => handleError(e))
+    })
+
+    // 拼接待翻译的项(中文)，利用；分号拼接
+    translateBtn.addEventListener('click', (e) => {
+      if (Object.keys(matchMap).length <= 0) {
+        info.innerText = '没有待翻译的项，请先提取翻译项~'
+        return
+      }
+      let keys = Object.keys(matchMap)
+      let keysStr = keys.join(';')
+      $api.getTranslateList({ list: keysStr, type: translateType })
+        .then(res => {
+          if (res.data && res.data.code === 200) {
+            let data = res.data.data
+            // 返回一个数组，顺序跟传过去的字符串一样（除非翻译有问题）
+            keys.forEach((key, index) => {
+              matchMap[key].en = data[index]
+            })
+            let html = ''
+            let wrapper = document.getElementById('translate-wrapper')
+            Object.keys(matchMap).forEach(key => {
+              html += `
+                <li class="translate-item">
+                  <span class="zh">${matchMap[key].zh}</span>
+                  <span class="en">
+                    <input type="text" value="${matchMap[key].en}" />
+                  </span>
+                </li>
+              `
+            })
+            wrapper.innerHTML = html
+          } else {
+            throw new Error('翻译接口报错，请多试几次或者使用其他方案~')
+          }
+        })
+        .catch(e => handleError(e))
+    })
+    
+    replaceBtn.addEventListener('click', (e) => {
+      let fileNameInput = document.getElementById('fileName')
+      // 新生成的文件/国际化key
+      let fileName = fileNameInput.value
+      let translateList = document.getElementsByClassName('translate-item')
+      let map = {}
+      for (let i = 0; i < translateList.length; i++) {
+        let item = translateList[i]
+        let zh = item.children[0].innerText
+        let en = item.children[1].children[0].value
+        map[zh] = { zh, en }
+      }
+      if (Object.keys(map).length <= 0) {
+        info.innerText = '没有翻译项哦，请检查~'
+        return 
+      }
+      if (!fileName) {
+        if (!confirm('没有文件名称哦，默认【v2_auto】吗？')) {
+          return
+        }
+      }
+      $api.goTranslate({ t: map, fileName })
+        .then(res => {
+          if (res.data && res.data.code === 200) {
+            info.innerText = '替换成功，请查看文件~'
+            initRelationData()
+          }
+        })
+        .catch(e => handleError(e))
+    })
+    
+  </script>
+</body>
+</html>
