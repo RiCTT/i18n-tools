@@ -9,6 +9,6 @@ files.keys().forEach(key => {
 export default {
   ...autoMap,
   title: {
-    name: 1
+    name: 'zh 中文'
   }
 };

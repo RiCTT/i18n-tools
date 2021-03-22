@@ -9,6 +9,6 @@ files.keys().forEach(key => {
 export default {
   ...autoMap,
   title: {
-    name: 'name'
+    name: 'en ame'
   }
 };

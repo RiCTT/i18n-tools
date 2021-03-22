@@ -1,8 +1,9 @@
 const Router = require('koa-router')
 const router = new Router()
 const fs = require('fs')
+const path = require('path')
 const indexCtrl = require('../controller')
-const indexHtml = fs.readFileSync('./index.html')
+const indexHtml = fs.readFileSync(path.join(__dirname, '../index.html'))
 
 
 router.get('/', async ctx => {

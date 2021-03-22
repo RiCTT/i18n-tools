@@ -93,6 +93,7 @@ function startMatch() {
 class IndexCtrl {
   constructor() {}
   async getMatchList(ctx) {
+    textsMap = {}
     await startMatch();
     ctx.body = {
       files,
@@ -115,7 +116,8 @@ class IndexCtrl {
         if (data.length !== originQuery.split(";").length) {
           ctx.body = {
             code: 500,
-            data: "翻译结果不匹配，请检查根目录下screenshot.png"
+            msg: "翻译结果不匹配，请检查根目录下screenshot.png",
+            data: data
           };
           return;
         }
@@ -164,7 +166,7 @@ class IndexCtrl {
             };
             data = data.replace(
               new RegExp("\\$g\\(('|\")" + item.zh + "('|\")\\)"),
-              `$g('${langFileName}.${key}')`
+              `$t('${langFileName}.${key}')`
             );
           });
           fs.writeFileSync(filePath, data, "utf-8");
