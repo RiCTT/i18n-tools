@@ -239,7 +239,8 @@ async function getTranslateFromPuppeteer(lang, texts) {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   await page.goto(url);
-  await page.screenshot({ path: "screenshot.png" });
+  // await page.screenshot({ path: "screenshot.png" });
+  await page.screenshot({ path: path.join(__dirname, "./screenshot.png") });
   let result = await page.evaluate(() => {
     return document.querySelector(".VIiyi").innerText;
   });
