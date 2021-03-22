@@ -164,7 +164,7 @@ class IndexCtrl {
             };
             data = data.replace(
               new RegExp("\\$g\\(('|\")" + item.zh + "('|\")\\)"),
-              `$g("${langFileName}.${key}")`
+              `$g('${langFileName}.${key}')`
             );
           });
           fs.writeFileSync(filePath, data, "utf-8");
